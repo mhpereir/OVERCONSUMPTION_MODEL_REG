@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.ini
+*.py[cod]
+*$py.class
+
+# Data files
+*.h5
+*.npy
+*.txt
+*.ppk
+*.pdf
+*.png
+*.jpg
+
