@@ -1,11 +1,11 @@
 {
     "model_setup" :{
-        "n_galaxies":1e5,
-        "logM_min":1.5,
+        "n_galaxies":5e6,
+        "logM_min":8,
         "logM_max":12,
-        "logM_std":0.5,
+        "logM_std":0.7,
         "f_s_limit":1e-4,
-        "sSFR":"Schreiber"
+        "sSFR":"Speagle"
     },
     "cosmology" :{
         "omega_m":0.3,

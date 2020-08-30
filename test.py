@@ -1,4 +1,4 @@
-import os, argparse, json
+import os, argparse
 import numpy as np
 import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 16, 'xtick.labelsize':14, 'ytick.labelsize':14})
@@ -9,50 +9,35 @@ from scipy.optimize import newton_krylov, brentq
 
 from astropy.cosmology import Planck15 as cosmo, z_at_value
 
-
-
-z_init_field   = 10
-z_init_cluster = 10
-z_final = 1
+z_init  = 10
+z_final = 0
 
 cluster_mass = 13.5  #log10(Mhalo)
-n_clusters   = 100000
+n_clusters   = 100
 
-oc_flag      = True  # flag for overconsumption model. 
-oc_eta       = 1     # mass-loading factor
-
-plot_flag    = True
-savefigs     = True
-
-n_cores      = 1
-n_spare      = 0
+oc_flag      = True      #
+oc_eta       = 1
 
 logMh_range  = np.arange(9,15,0.1)
-logMs_range  = np.arange(2.5,11.5,0.1)
+logMs_range  = np.arange(0.5,11.5,0.1)
 Mh_range     = np.power(10, logMh_range)
 z_range      = np.arange(0,10,0.1)
 
 if __name__ == "__main__":
-    
-    with open("params.json") as paramfile:
-        params = json.load(paramfile)
-    
-    n_galax   = params['model_setup']['n_galaxies']
-    
-    model   = PENG_model(params, z_init_cluster, z_final)  # initializes the model class
+    model           = PENG_model(None, z_init, z_final)
     
     ##!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
     
-    sSFR = np.array([model.sSFR_peng(logMs,z_range, None) for logMs in logMs_range ])
+    sSFR = np.array([model.sSFR(logMs,z_range) for logMs in logMs_range ])
     
     fig,ax = plt.subplots(tight_layout=True)
-    contourf_ = ax.contourf(z_range, logMs_range, np.log10(sSFR), np.arange(-11,-7.51,0.5), extend='both')
-    ax.set_title('Peng log(sSFR)')
+    contourf_ = ax.contourf(z_range, logMs_range, np.log10(sSFR) )#, np.arange(0,14,2), extend='both')
+    ax.set_title('Speagle log(sSFR)')
     ax.set_xlabel('Redshift [z]')
     ax.set_ylabel('Stellar Mass [log($M_*/M_\odot$)]')
     plt.colorbar(contourf_)
     
-    fig.savefig('./images/PENG_sSFR.png', dpi=220)
+    fig.savefig('./images/SPEAGLE_sSFR.png', dpi=220)
     
     ##!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
     
