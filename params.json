@@ -1,16 +1,29 @@
 {
     "model_setup" :{
-        "n_galaxies":5e6,
-        "logM_min":8,
-        "logM_max":12,
-        "logM_std":0.7,
-        "f_s_limit":1e-4,
-        "sSFR":"Speagle"
+        "n_galaxies"    :5e6,
+        "logM_min"      :8,
+        "logM_max"      :12,
+        "logM_std"      :0.7,
+        "cluster_M"     :13.5,
+        "n_cluster"     :3000,
+        "integ_step"    :0.01,
+        "ssfr_threshold":1e-10,
+        "mpp"           :"False",
+        "show_plots"    :"True"
     },
     "cosmology" :{
-        "omega_m":0.3,
-        "omega_b":0.044,
-        "h"      :0.7,
-        "sigma_8":1
+        "omega_m"       :0.3,
+        "omega_b"       :0.044,
+        "h"             :0.7,
+        "sigma_8"       :1,
+        "f_bar"         :0.17
+    },
+    "model_params" :{
+        "z_init_field"   :10,
+        "z_init_cluster" :10,
+        "z_final"        :1,
+        "eta"            :1,
+        "f_strip"        :0,
+        "R"              :0.56
     }
 }

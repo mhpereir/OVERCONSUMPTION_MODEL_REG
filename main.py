@@ -1,48 +1,33 @@
-import os, argparse, json
-
-import numpy as np
+import json
 
 from time import time
 
 from model import PENG_model
 from plot_utils import plot_results
-from multiprocessing import Pool
 
 z_init_field   = 10
 z_init_cluster = 10
 z_final = 1
 
-cluster_mass = 13.5  #log10(Mhalo)
-n_clusters   = 5000
-
-oc_flag      = True  # flag for overconsumption model. 
-oc_eta       = 1     # mass-loading factor
-
-plot_flag    = True
-savefigs     = True
-
-n_cores      = 4
-n_spare      = 0
 
 if __name__ == "__main__":
-    
-    #p = Pool(n_cores - n_spare, maxtasksperchild=1)
     
     with open("params.json") as paramfile:
         params = json.load(paramfile)
     
-    n_galax   = params['model_setup']['n_galaxies']
+    z_init_field   = params['model_params']['z_init_field']
+    z_init_cluster = params['model_params']['z_init_cluster']
     
-    model_c   = PENG_model(params, z_init_cluster, z_final)  # initializes the model class
+    model_c   = PENG_model(params, z_init_cluster)  # initializes the model class
     
-    model_c.gen_galaxies(n_galax)                            # generates the SF population at z_init
-    #model_c.gen_field_analytic(p)                            # generates the PENG model predictions for the field, analytically
+    model_c.gen_galaxies()                            # generates the SF population at z_init
+    #model_c.gen_field_analytic()                            # generates the PENG model predictions for the field, analytically
                                                              #      used in plotting & determining cluster galaxy growth
     
     print('\t Done analytical model')
     
     model_c.setup_evolve()                                         # prepares some vars & RK45
-    model_c.gen_cluster(cluster_mass, n_clusters, oc_flag, oc_eta) # first galaxies assigned to cluster at z_init
+    model_c.gen_cluster() # first galaxies assigned to cluster at z_init
     
     start_time_1 = time()
     while model_c.t >= model_c.t_final and model_c.condition:
@@ -69,13 +54,13 @@ if __name__ == "__main__":
     
     # #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
     
-    model_f   = PENG_model(params, z_init_field, z_final)
+    model_f   = PENG_model(params, z_init_field)
     
     if z_init_field ==  z_init_cluster:
         model_f = model_c
     else:
         pass
-    #     model_f.gen_galaxies(n_galax)
+    #     model_f.gen_galaxies()
     #     #model_f.sf_masses = np.copy(model_c.sf_masses)  #save ourselves some time and re-use the initial SF population
     #     model_f.gen_field_analytic(p)
         
@@ -101,7 +86,7 @@ if __name__ == "__main__":
     # model_f.parse_masked_mass_field()
     # model_c.parse_masked_mass_cluster()
     
-    plot_results(plot_flag, savefigs, model_c, model_f)
+    plot_results(params, model_c, model_f)
     
     # total_stel_mass             = np.sum(np.power(10,model_c.final_mass_cluster_SF)) + np.sum(np.power(10, model_c.final_mass_cluster_Q))
     # total_stel_mass_per_cluster = total_stel_mass/n_clusters

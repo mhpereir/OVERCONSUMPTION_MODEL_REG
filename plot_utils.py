@@ -5,9 +5,14 @@ plt.rcParams.update({'font.size': 16, 'xtick.labelsize':14, 'ytick.labelsize':14
 from astropy.cosmology import Planck15 as cosmo, z_at_value
 
 class plot_results:
-    def __init__(self, plotting_flag, savefigs, model_c, model_f): 
+    def __init__(self, params, model_c, model_f): 
         
-        self.savefigs = savefigs
+        plot_flag    = params['model_setup']['show_plots']
+        
+        if plot_flag == "True":
+            plotting_flag = True
+        else:
+            plotting_flag = False
         
         if plotting_flag:
             
@@ -20,10 +25,6 @@ class plot_results:
             
             #self.history_tracks(model_c)
             
-            if self.savefigs:
-                pass
-            else:
-                plt.show()
 
     def init_pop(self, model):
         '''
@@ -36,10 +37,9 @@ class plot_results:
         fig,ax = plt.subplots(tight_layout=True)
         y_init, x_init,_ = ax.hist(model.hmass_init, log=True, bins=x_range_init)
         ax.semilogy(x_range_init, init_phi_hm(x_range_init)*y_init[abs(x_init[:-1] - 9) < 0.001]/init_phi_hm(9) )
-        ax.set_xlabel('Stellar Mass [log($M_*/M_\odot$)]')
+        ax.set_xlabel('Halo Mass [log($M_h/M_\odot$)]')
         ax.set_ylabel('$\Phi_{Field}$')
-        if self.savefigs:
-            fig.savefig('./images/SMF_init.png', dpi=220)
+        fig.savefig('./images/SMF_init.png', dpi=220)
         
     def final_pop(self, model_c, model_f):
         '''
@@ -52,8 +52,6 @@ class plot_results:
         -------
         figures: 
         '''
-        
-        z_final = model_f.z_final
         x_range = np.arange(8,12,0.1)
         
         fig,ax = plt.subplots(tight_layout=True)
@@ -71,8 +69,7 @@ class plot_results:
         ax.set_xlabel('Stellar Mass [log($M_*/M_\odot$)]')
         ax.set_ylabel('$\Phi_{Field}$')
         ax.set_xlim([8.5,12])
-        if self.savefigs:
-            fig.savefig('./images/SMF_field.png', dpi=220)
+        fig.savefig('./images/SMF_field.png', dpi=220)
         
         fig,ax = plt.subplots(tight_layout=True)
         y_sf,_  = np.histogram(model_c.final_mass_cluster_SF, bins=np.arange(6,14,0.1))
@@ -89,8 +86,7 @@ class plot_results:
         ax.set_xlabel('Stellar Mass [log($M_*/M_\odot$)]')
         ax.set_ylabel('$\Phi_{Cluster}$')
         ax.set_xlim([8.5,12])
-        if self.savefigs:
-            fig.savefig('./images/SMF_cluster.png', dpi=220)
+        fig.savefig('./images/SMF_cluster.png', dpi=220)
         
     def QFs_QE(self, model_c, model_f):
         hist_sf_field, bins   = np.histogram(model_f.final_mass_field_SF, bins=np.arange(6,14,0.1))
@@ -111,16 +107,14 @@ class plot_results:
         ax.set_xlabel('Stellar Mass [log($M_*/M_\odot$)]')
         ax.set_ylabel('Quenched Fraction')
         ax.set_xlim([9,11.5])
-        if self.savefigs:
-            fig.savefig('./images/QFs.png', dpi=220)
+        fig.savefig('./images/QFs.png', dpi=220)
         
         fig,ax = plt.subplots()
         ax.plot(bins_midp, QE)
         ax.set_xlim([9,11.5])
         ax.set_xlabel('Stellar Mass [log($M_*/M_\odot$)]')
         ax.set_ylabel('Quenching Efficiency')
-        if self.savefigs:
-            fig.savefig('./images/QE.png', dpi=220)
+        fig.savefig('./images/QE.png', dpi=220)
         
     def delay_times(self, model):
         z_init      = model.z_init
@@ -156,8 +150,7 @@ class plot_results:
         ax.set_ylabel('Stellar Mass [log($M_*$/$M_\odot$)]')
         #ax.set_ylim([8,12])
         #cbar      = fig.colorbar(contourf_, label='Quenched due to OC')
-        if self.savefigs:
-            fig.savefig('./images/cluster_final_m_z.png', dpi=220)
+        fig.savefig('./images/cluster_final_m_z.png', dpi=220)
         
         
         
@@ -177,8 +170,7 @@ class plot_results:
         ax.set_ylabel('Stellar Mass [log($M_*$/$M_\odot$)]')
         #ax.set_ylim([8,12])
         #cbar      = fig.colorbar(contourf_, label='Quenched due to OC')
-        if self.savefigs:
-            fig.savefig('./images/cluster_final_m.png', dpi=220)
+        fig.savefig('./images/cluster_final_m.png', dpi=220)
         
         
         
@@ -196,8 +188,7 @@ class plot_results:
         ax.set_ylabel('Stellar Mass [log($M_*$/$M_\odot$)]')
         #ax.set_ylim([8,12])
         #cbar      = fig.colorbar(contourf_, label='Quenched due to OC')
-        if self.savefigs:
-            fig.savefig('./images/cluster_infall_m.png', dpi=220)
+        fig.savefig('./images/cluster_infall_m.png', dpi=220)
         
     def history_tracks(self, model):
         n  = len(model.mass_history)
@@ -213,8 +204,6 @@ class plot_results:
             mass_history[i,0:int(mass_arr.shape[0])] = mass_arr[:]
         
         mass_history      = np.ma.log10(mass_history[::-1,:])
-        OC_flags          = model.OC_flags[:]
-        MQ_flags          = model.MQ_flags[:]
         
         fig,ax = plt.subplots()
         
@@ -282,5 +271,4 @@ class plot_results:
         
         ax.set_xlabel('Lookback Time [Gyr]')
         ax.set_ylabel('Stellar Mass [log($M_*/M_\odot$)]')
-        if self.savefigs:
-            fig.savefig('./images/history_path.png', dpi=220)
+        fig.savefig('./images/history_path.png', dpi=220)

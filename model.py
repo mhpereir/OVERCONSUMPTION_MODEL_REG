@@ -15,44 +15,39 @@ from utils import integration_utils
 #import matplotlib.pyplot as plt
 
 class PENG_model:
-    def __init__(self, params, z_i, z_f): 
-        self.logM_min  = params['model_setup']['logM_min']    # minimum sampled mass from init SF population
-        self.logM_max  = params['model_setup']['logM_max']    # maximum //
-        self.logM_std  = params['model_setup']['logM_std']    # std of MCMC - Metropolis-hastings sampler
-        self.f_s_limit = params['model_setup']['f_s_limit']   # lower limit in the stellar mass fraction of galaxy halo
+    def __init__(self, params, z_i): 
+        self.logM_min    = params['model_setup']['logM_min']        # minimum sampled mass from init SF population
+        self.logM_max    = params['model_setup']['logM_max']        # maximum //
+        self.logM_std    = params['model_setup']['logM_std']        # std of MCMC - Metropolis-hastings sampler
+        self.n_galax     = params['model_setup']['n_galaxies']      # number of galaxies sampled from init SMF
+        self.cluster_M   = params['model_setup']['cluster_M']       # Mass of cluster at z_final (log10)
+        self.n_cluster   = params['model_setup']['n_cluster']       # number of clusters generated at once. usefull for smoothing of SMFs
+        self.step        = params['model_setup']['integ_step']      # integration step size in Gyr
+        self.ssfr_thrhld = params['model_setup']['ssfr_threshold']  # threshold at which galaxies are considered quench
         
         self.x_bins    = np.arange(self.logM_min, 15.01, 0.1)
         self.x_midp    = (self.x_bins[1:] + self.x_bins[:-1])/2
         
-        self.sSFR_key  = params['model_setup']['sSFR']
         
         #Cosmology params
         self.omega_m = params['cosmology']['omega_m']
         self.omega_b = params['cosmology']['omega_b']
         self.h       = params['cosmology']['h']
         self.sigma_8 = params['cosmology']['sigma_8']
+        self.f_bar   = params['cosmology']['f_bar']
         
-        self.f_bar   = 0.18
-        self.f_strip = 0
-        self.R       = 0.56
-        
-        self.step    = 0.01 #Gyr
         
         #Model params
-        self.z_init  = z_i
-        self.z_final = z_f
+        self.z_init   = z_i
+        self.z_final  = params['model_params']['z_final']        
+        self.f_strip  = params['model_params']['f_strip']    # fraction of gas that is stripped
+        self.R        = params['model_params']['R']          # return fraction of gas to interstellar medium
+        self.oc_eta   = params['model_params']['eta']        # mass-loading factor
         
         # Global variables
         self.mass_history = []
     
-    ###  Schechter Stuff ###
-    def schechter_SMF_prob(self, logMs):
-        if logMs > self.logM_min and logMs <= self.logM_max:
-            Density = 1e-5 * np.power(10, (logMs-10.6)*(1-1.4)) * np.exp(-np.power(10, (logMs-10.6 )))
-        else:
-            Density = 0
-        return Density
-    
+    ###  initial S/H-MF Stuff ###    
     def open_HMF_file(self,file_name='./HMF_watson.txt'):
         file_content = np.genfromtxt(file_name, skip_header=12)
         
@@ -69,7 +64,7 @@ class PENG_model:
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
     
     ### PENG Monte Carlo Model ###
-    def gen_galaxies(self,N):
+    def gen_galaxies(self):
         start_time = time()
         list_masses = []
         x_0 = 9 #np.random.rand()*(self.logM_max-self.logM_min) + self.logM_min
@@ -77,7 +72,7 @@ class PENG_model:
         
         self.phi_hm_interp = self.open_HMF_file()
         
-        while n < N:
+        while n < self.n_galax:
             x_1 = np.random.normal(x_0, self.logM_std)
             
             p0 = self.phi_hm_interp(x_0)
@@ -95,9 +90,6 @@ class PENG_model:
         self.hmass_init   = np.array(list_masses, copy=True)
         self.hmass_init   = self.hmass_init[self.hmass_init > (self.logM_min + self.logM_std)]
         self.hmass_init   = self.hmass_init[self.hmass_init < (self.logM_max - self.logM_std)]
-        
-        #self.hmass_init = np.arange(8,11.1,0.01)
-        
         list_masses       = None
     
     def setup_evolve(self):
@@ -128,23 +120,19 @@ class PENG_model:
         if (self.t - self.step) > self.t_final:
             pass
         else:
-            self.step = self.t - self.t_final
-            # self.force      = True
+            self.step       = self.t - self.t_final
             self.condition  = False
         
         hist_hm ,_          = np.histogram( np.log10(self.hmass) , bins=self.x_bins)
                
         self.phi_hm_interp  = interp1d(self.x_midp, hist_hm , bounds_error=True)
             
-    def gen_cluster(self, cluster_mass, n_clusters, oc_flag, oc_eta):
+    def gen_cluster(self):
         '''
         Generates the cluster. Samples N galaxies from the star forming galaxy array
         '''
-        self.logM0     = cluster_mass
+        self.logM0     = self.cluster_M
         self.z_0       = self.z_final
-        self.n_cluster = n_clusters
-        self.oc_flag   = oc_flag  #toggle for applying OC in the model
-        self.oc_eta    = oc_eta
         
         self.progenitor_mass = np.power(10, self.M_main(self.z_init))
         
@@ -297,7 +285,6 @@ class PENG_model:
                 self.cluster_gmass = new_arr_gmass
                 self.cluster_smass = new_arr_smass
                 
-                
                 self.infall_z       = new_arr_z
                 self.infall_Ms      = new_arr_Ms
                 self.infall_Mh      = new_arr_Mh
@@ -311,7 +298,7 @@ class PENG_model:
             vals      = np.array([self.cluster_hmass, self.cluster_gmass, self.cluster_smass])
             
             #mass_array = self.integ.RK45(inits, self.t, force=True)
-            vals_2    = vals + self.DE2(vals, self.t)# * self.step
+            vals_2    = vals + self.DE2(vals, self.t)# * self.step   #WARNING: needs to be DE2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             
             self.cluster_hmass = vals_2[0,:]
             self.cluster_gmass = vals_2[1,:]
@@ -324,14 +311,14 @@ class PENG_model:
     def parse_masked_mass_field(self):
         ssfr = self.SFR(self.gmass, self.z_final) / self.smass
                 
-        self.final_mass_field_SF = np.log10(self.smass[ssfr >= 5e-10])
-        self.final_mass_field_Q  = np.log10(self.smass[ssfr <  5e-10])
+        self.final_mass_field_SF = np.log10(self.smass[ssfr >= self.ssfr_thrhld])
+        self.final_mass_field_Q  = np.log10(self.smass[ssfr <  self.ssfr_thrhld])
     
     def parse_masked_mass_cluster(self):
         ssfr = self.SFR(self.cluster_gmass, self.z_final) / self.cluster_smass
                 
-        self.final_mass_cluster_SF = np.log10(self.cluster_smass[ssfr >= 5e-10])
-        self.final_mass_cluster_Q  = np.log10(self.cluster_smass[ssfr <  5e-10])
+        self.final_mass_cluster_SF = np.log10(self.cluster_smass[ssfr >= self.ssfr_thrhld])
+        self.final_mass_cluster_Q  = np.log10(self.cluster_smass[ssfr <  self.ssfr_thrhld])
     
     def DE(self, item, t):
         Mhalo = item[0]
@@ -431,39 +418,7 @@ class PENG_model:
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
     
-    ### Overconsumption Delay times ###
-    def t_delay(self, item):
-        M_star, ssfr_p, M_halo, z = item[0],item[1],item[2],item[3]
-        
-        #delay time params
-        
-        logMs   = np.ma.log10(M_star)
-        
-        f_star    = M_star/M_halo
-        #f_cold    = 0.1*(1+np.minimum(z,2))**2 * f_star
-        f_cold    = self.M_cold(logMs, z, ssfr_p)/M_halo
-        
-        num       = self.f_bar - f_cold - f_star * (1 + self.oc_eta*(1+self.R)) - self.f_strip
-        den       = f_star * (1 - self.R + self.oc_eta) * self.sSFR(logMs, z, ssfr_p)
-        return (num/den)/(1e9) #gyr
-        
-    def t_delay_2(self, M_halo, z):
-        
-        #delay time params
-        
-        M_star     = self.M_star(M_halo,z)
-        logMs      = np.log10(M_star)
-        
-        f_star     = M_star/M_halo
-        f_cold    = 0.1*(1+np.minimum(z,2))**2 * f_star
-        #f_cold    = self.M_cold(logMs, z)/M_halo
-        
-        num       = self.f_bar - f_cold - f_star * (1 + self.oc_eta*(1+self.R)) - self.f_strip
-        den       = f_star * (1 - self.R + self.oc_eta) * self.sSFR(logMs, z)
-        return (num/den)/(1e9) #gyr
-        
-    
-    
+    ### Molecular gas fraction ###    
     def M_cold(self,logMs, z, ssfr_params):          #cold gas mass fraction 
         A_mu = 0.07 #pm 0.15
         B_mu = -3.8 #pm 0.4
